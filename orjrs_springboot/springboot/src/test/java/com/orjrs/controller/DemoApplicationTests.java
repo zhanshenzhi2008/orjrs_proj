@@ -1,4 +1,4 @@
-package com.orjrs.demo;
+package com.orjrs.controller;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
