@@ -3,3 +3,10 @@ server:
 girl:
   cupSize: A
   age: 16
+# 配置logback
+debug: true
+logging:
+  config: classpath:logback-spring.xml
+logback:
+  appName: logback
+  appDir: E:/log

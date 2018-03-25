@@ -35,7 +35,11 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-
+        <!-- 日志 开发环境可以不配，spring-boot-starter已经有依赖-->
+        <!-- <dependency>
+             <groupId>org.springframework.boot</groupId>
+             <artifactId>spring-boot-starter-logging</artifactId>
+         </dependency>-->
         <!-- redis-->
         <dependency>
             <groupId>org.springframework.boot</groupId>
