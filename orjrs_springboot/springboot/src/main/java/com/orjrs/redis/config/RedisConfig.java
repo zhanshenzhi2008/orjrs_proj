@@ -1,4 +1,4 @@
-package com.orjrs.redis;
+package com.orjrs.redis.config;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
@@ -15,9 +15,7 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
-import org.springframework.data.redis.serializer.JdkSerializationRedisSerializer;
-import org.springframework.data.redis.serializer.RedisSerializer;
-import org.springframework.data.redis.serializer.StringRedisSerializer;
+import redis.clients.jedis.JedisPoolConfig;
 
 import java.lang.reflect.Method;
 import java.util.stream.Stream;
@@ -94,7 +92,7 @@ public class RedisConfig extends CachingConfigurerSupport {
     /**
      * 缓存管理器:注解@Cache的管理器，设置过期时间的单位是秒
      *
-     * @param redisTemplate
+     * @param redisTemplate redis模板
      * @return
      */
     @Bean
@@ -106,12 +104,16 @@ public class RedisConfig extends CachingConfigurerSupport {
     }
 
     /**
-     *
+     * @param factory
      */
     @Bean
     public RedisTemplate<?, ?> redisTemplate(RedisConnectionFactory factory) {
         RedisTemplate<?, ?> redisTemplate = new RedisTemplate<>();
         redisTemplate.setConnectionFactory(factory);
+        /*Map<String, Long> expires=new HashMap<String, Long>();
+        expires.put("user", 6000L);
+        expires.put("city", 600L);
+        cacheManager.setExpires(expires);*/
         // 如果方法上有Long等非String类型的话，会报类型转换错误，故设置序列化工具
         setSerializer(redisTemplate);
         redisTemplate.afterPropertiesSet();
@@ -120,6 +122,8 @@ public class RedisConfig extends CachingConfigurerSupport {
 
     /**
      * 序列化StringRedisTemplate
+     *
+     * @param redisTemplate redis模板
      */
     private void setSerializer(RedisTemplate<?, ?> redisTemplate) {
         Jackson2JsonRedisSerializer jackson2Json = new Jackson2JsonRedisSerializer(Object.class);
@@ -142,12 +146,33 @@ public class RedisConfig extends CachingConfigurerSupport {
 
     }
 
+    /**
+     * redis连接的基础设置
+     *
+     * @return JedisConnectionFactory
+     */
     @Bean
     public JedisConnectionFactory redisConnectionFactory() {
         JedisConnectionFactory factory = new JedisConnectionFactory();
-        factory.setHostName(this.getHost());
+        factory.setDatabase(this.database);
+        factory.setHostName(this.host);
         factory.setPort(this.port);
+        factory.setTimeout(this.timeout);
         factory.setUsePool(true);
+        factory.setPoolConfig(jedisPoolConfig());
         return factory;
+    }
+
+    /**
+     * redis连接的基础设置
+     *
+     * @return JedisPoolConfig
+     */
+    @Bean
+    public JedisPoolConfig jedisPoolConfig() {
+        JedisPoolConfig jedisPoolConfig = new JedisPoolConfig();
+        jedisPoolConfig.setMaxIdle(this.maxIdle);
+        jedisPoolConfig.setMinIdle(this.minIdle);
+        return jedisPoolConfig;
     }
 }
