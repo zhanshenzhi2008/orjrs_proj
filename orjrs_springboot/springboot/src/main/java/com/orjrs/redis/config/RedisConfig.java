@@ -3,10 +3,14 @@ package com.orjrs.redis.config;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CachingConfigurerSupport;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.interceptor.CacheErrorHandler;
 import org.springframework.cache.interceptor.KeyGenerator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,14 +19,20 @@ import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.jedis.JedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.RedisSerializer;
+import org.springframework.data.redis.serializer.StringRedisSerializer;
 import redis.clients.jedis.JedisPoolConfig;
 
 import java.lang.reflect.Method;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.stream.Stream;
 
 @Configuration
 @EnableCaching
 public class RedisConfig extends CachingConfigurerSupport {
+    private final Logger LOGGER = LoggerFactory.getLogger(this.getClass());
+
     @Value("${spring.redis.host}")
     private String host;
 
@@ -76,6 +86,7 @@ public class RedisConfig extends CachingConfigurerSupport {
      * 自定义缓存key生成策略:注解@Cache key生成规则
      */
     @Bean
+    @Override
     public KeyGenerator keyGenerator() {
         return new KeyGenerator() {
             @Override
@@ -126,13 +137,19 @@ public class RedisConfig extends CachingConfigurerSupport {
      * @param redisTemplate redis模板
      */
     private void setSerializer(RedisTemplate<?, ?> redisTemplate) {
-        Jackson2JsonRedisSerializer jackson2Json = new Jackson2JsonRedisSerializer(Object.class);
+        Jackson2JsonRedisSerializer jackson2JsonSerializer = new Jackson2JsonRedisSerializer(Object.class);
         ObjectMapper om = new ObjectMapper();
+        om.setDateFormat(new SimpleDateFormat("yyyy-mm-dd hh:mm:ss"));// 处理日期格式
         om.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
         om.enableDefaultTyping(ObjectMapper.DefaultTyping.NON_FINAL);
-        jackson2Json.setObjectMapper(om);
-        redisTemplate.setValueSerializer(jackson2Json);
 
+        jackson2JsonSerializer.setObjectMapper(om);
+        redisTemplate.setKeySerializer(jackson2JsonSerializer);
+        redisTemplate.setValueSerializer(jackson2JsonSerializer);
+        redisTemplate.setHashKeySerializer(jackson2JsonSerializer);
+        redisTemplate.setHashValueSerializer(jackson2JsonSerializer);
+        RedisSerializer<String> redisSerializer = new StringRedisSerializer();
+        redisTemplate.setStringSerializer(redisSerializer);
 
         //key序列化方式;但是如果方法上有Long等非String类型的话，会报类型转换错误；
        /* RedisSerializer<String> redisSerializer = new StringRedisSerializer();//Long类型不可以会出现异常信息;
@@ -174,5 +191,39 @@ public class RedisConfig extends CachingConfigurerSupport {
         jedisPoolConfig.setMaxIdle(this.maxIdle);
         jedisPoolConfig.setMinIdle(this.minIdle);
         return jedisPoolConfig;
+    }
+
+    /**
+     * redis数据操作异常处理
+     * 这里的处理：在日志中打印出错误信息，但是放行
+     * 保证redis服务器出现连接等问题的时候不影响程序的正常运行，使得能够出问题时不用缓存
+     *
+     * @return
+     */
+    @Bean
+    @Override
+    public CacheErrorHandler errorHandler() {
+        CacheErrorHandler cacheErrorHandler = new CacheErrorHandler() {
+            @Override
+            public void handleCacheGetError(RuntimeException e, Cache cache, Object key) {
+                LOGGER.error("redis异常：key=[{}]", key, e);
+            }
+
+            @Override
+            public void handleCachePutError(RuntimeException e, Cache cache, Object key, Object value) {
+                LOGGER.error("redis异常：key=[{}]", key, e);
+            }
+
+            @Override
+            public void handleCacheEvictError(RuntimeException e, Cache cache, Object key) {
+                LOGGER.error("redis异常：key=[{}]", key, e);
+            }
+
+            @Override
+            public void handleCacheClearError(RuntimeException e, Cache cache) {
+                LOGGER.error("redis异常：", e);
+            }
+        };
+        return cacheErrorHandler;
     }
 }

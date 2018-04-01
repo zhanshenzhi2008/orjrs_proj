@@ -19,7 +19,9 @@ public interface RedisService {
 
     /***
      *  根据id 名字 年龄存放girl缓存
-     * @param girl 女孩
+     * @param id 流水号
+     * @param name 名字
+     * @param age 年龄
      * @return Girl
      */
     Girl addGirl(long id, String name, int age);

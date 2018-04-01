@@ -2,6 +2,8 @@ package com.orjrs.redis.service.impl;
 
 import com.orjrs.model.Girl;
 import com.orjrs.redis.service.RedisService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
@@ -16,6 +18,7 @@ import java.util.Set;
  */
 @Service
 public class RedisServiceImpl implements RedisService {
+
     @Autowired
     private RedisTemplate<String, Object> redisTemplate;
 
@@ -35,7 +38,9 @@ public class RedisServiceImpl implements RedisService {
 
     /***
      *  根据id 名字 年龄存放girl缓存
-     * @param girl 女孩
+     * @param id 流水号
+     * @param name 名字
+     * @param age 年龄
      * @return Girl
      */
     @Override
@@ -51,7 +56,7 @@ public class RedisServiceImpl implements RedisService {
 
     /***
      *  根据id获取缓存中的Girl
-     * @param id
+     * @param id 流水号
      * @return Girl
      */
     @Override
